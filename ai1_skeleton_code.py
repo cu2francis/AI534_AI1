@@ -3,12 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # constants
-path = "/home/sam/Downloads/IA1_train.csv"
+train = "/home/sam/Downloads/IA1_train.csv"
+val = "/home/sam/Downloads/IA1_dev.csv"
 convergence_treshold = 0.0005
 
 
 # Loads a data file from a provided file location.
-def load_data():
+def load_data(path):
     # Your code here:
     return pd.read_csv(path)
 
@@ -72,10 +73,10 @@ def batch_gradient_descent(training_values, target, weights, learning_rate, iter
         loss_history.append(mean_square_error(training_values, target, weights))
         if i > 0:
             if loss_history[i-1] < loss_history[i]:
-                print("Diverged. Aborting calculation")
+                print("Diverged")
                 break
             if (loss_history[i-1] - loss_history[i]) < convergence_treshold:
-                print("Converged. Aborting calculation")
+                print("Converged")
                 break
     return weights, loss_history
 
@@ -88,10 +89,8 @@ def gd_train(data, labels, lr, iterations):
     target = data['price']
     weights = np.zeros(training_values.shape[1])
     start_weight = mean_square_error(training_values, target, weights)
-    print("Start-Weight: " + str(start_weight))
     batch_weight, batch_loss_history = batch_gradient_descent(training_values, target, weights, lr, iterations)
-
-    print("End-Weight: " + str(mean_square_error(training_values, target, batch_weight)))
+    print("Final MSE:\t\t\t" + str(mean_square_error(training_values, target, batch_weight)))
 
     return batch_weight, batch_loss_history, start_weight
 
@@ -103,10 +102,18 @@ def plot_losses(losses, labels, ymax):
     ax = plt.subplot(1, 1, 1)
     ax.set_ylim([0, ymax])
     for index, y in enumerate(losses):
-        ax.plot(range(len(y)), y, linewidth=1.5, label=str(labels[index]))
+        ax.plot(range(len(y)), y, linewidth=0.25, label="LR " + str(10**(-labels[index])))
     fig.legend()
     fig.show()
     return
+
+
+def validate_weight(weights, validate_data):
+    target = validate_data['price']
+    value = validate_data.drop(['price'], axis=1)
+    value = validate_data.drop(['dummy'], axis=1)
+    mse = mean_square_error(value, target, weights)
+    print("Validated MSE:\t\t" + str(mse))
 
 # Invoke the above functions to implement the required functionality for each part of the assignment.
 
@@ -118,19 +125,24 @@ def plot_losses(losses, labels, ymax):
 # Your code here:
 def task1a():
     multi_losses = []
-    data = load_data()
+    data = load_data(train)
     data = preprocess_data(data, True, False)
-    labels = ["bedrooms", "bathrooms", "sqft_living", "sqft_lot", "floors",
-              "waterfront", "view", "condition", "grade", "sqft_above", "sqft_basement",
-              "yr_built", "age_since_renovated", "zipcode", "lat", "long", "sqft_living15",
-              "sqft_lot15", "day", "year", "month"]
-    lrs = [0, 1, 2, 3, 4, 5, 6]
+
+    validate = load_data(val)
+    validate = preprocess_data(validate, True, False)
+    labels = ['bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors', 'view',
+       'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built',
+       'zipcode', 'lat', 'long', 'sqft_living15', 'sqft_lot15', 'month', 'day',
+       'year', 'age_since_renovated', 'price', 'waterfront']
+    lrs = [1, 2, 3, 4]
 
     max = 1000000
 
     for lr in lrs:
         learning_rate = 10 ** (-lr)
+        print("Learning Rate " + str(learning_rate) + " =============")
         weight_batch, loses, weight = gd_train(data, labels, learning_rate, 4000)
+        validate_weight(weight_batch, validate)
         if weight < max:
             max = weight
         multi_losses.append(loses)
