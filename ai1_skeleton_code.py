@@ -4,24 +4,48 @@ import matplotlib.pyplot as plt
 
 # constants
 path = "/home/sam/Downloads/IA1_train.csv"
-convergence_treshold = 0.005
+convergence_treshold = 0.0005
 
 
 # Loads a data file from a provided file location.
 def load_data():
     # Your code here:
-    rawdata = pd.read_csv(path)
-    data = rawdata.apply(pd.to_numeric, errors='coerce')
-    return data
+    return pd.read_csv(path)
 
+
+def renovation(year, year_built, year_renovated):
+    age_since_renovated = [0.0]*len(year)
+    for index, value in enumerate(year_renovated):
+        if value == 0:
+            age_since_renovated[index] = year[index]-year_built[index]
+        else:
+            age_since_renovated[index] = year[index] - year_renovated[index]
+    return age_since_renovated
 
 # Implements dataset preprocessing, with boolean options to either normalize the data or not, 
 # and to either drop the sqrt_living15 column or not.
 #
 # Note that you will call this function multiple times to generate dataset versions that are
 # / aren't normalized, or versions that have / lack sqrt_living15.
-def preprocess_data(data, normalize, drop_sqrt_living15):
-    # Your code here:
+def preprocess_data(data, normalize, drop_sqft_living15):
+    data = data.drop(['id'], axis=1)
+    data[['month', 'day', 'year']] = data['date'].str.split('/', expand=True)
+    data = data.drop(['date'], axis=1)
+    data['dummy'] = 1.0
+    data = data.apply(pd.to_numeric, errors='coerce')
+    data['age_since_renovated'] = renovation(data['year'], data['yr_built'], data['yr_renovated'])
+    data = data.drop(['yr_renovated'], axis=1)
+    if normalize:
+        target = data['price']
+        waterfront = data['waterfront']
+        data = data.drop(['price'], axis=1)
+        data = data.drop(['waterfront'], axis=1)
+        data = (data - data.min()) / (data.max() - data.min())
+        data['price'] = target
+        data['waterfront'] = waterfront
+
+    if drop_sqft_living15:
+        data = data.drop(['sqft_living15'], axis=1)
     return data
 
 
@@ -32,6 +56,7 @@ def modify_features(data):
     # Your code here:
 
     return modified_data
+
 
 def mean_square_error(training_values, target, weights):
     predictions = np.dot(training_values, weights.T)
@@ -64,7 +89,6 @@ def gd_train(data, labels, lr, iterations):
     weights = np.zeros(training_values.shape[1])
     start_weight = mean_square_error(training_values, target, weights)
     print("Start-Weight: " + str(start_weight))
-    training_values = (training_values - training_values.min()) / (training_values.max() - training_values.min())
     batch_weight, batch_loss_history = batch_gradient_descent(training_values, target, weights, lr, iterations)
 
     print("End-Weight: " + str(mean_square_error(training_values, target, batch_weight)))
@@ -95,12 +119,12 @@ def plot_losses(losses, labels, ymax):
 def task1a():
     multi_losses = []
     data = load_data()
-    data = preprocess_data(data, True, True)
+    data = preprocess_data(data, True, False)
     labels = ["bedrooms", "bathrooms", "sqft_living", "sqft_lot", "floors",
               "waterfront", "view", "condition", "grade", "sqft_above", "sqft_basement",
-              "yr_built", "yr_renovated", "zipcode", "lat", "long", "sqft_living15",
-              "sqft_lot15"]
-    lrs = [1, 2, 3, 4, 5, 6]
+              "yr_built", "age_since_renovated", "zipcode", "lat", "long", "sqft_living15",
+              "sqft_lot15", "day", "year", "month"]
+    lrs = [0, 1, 2, 3, 4, 5, 6]
 
     max = 1000000
 
