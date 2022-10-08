@@ -111,7 +111,7 @@ def plot_losses(losses, labels, ymax):
 def validate_weight(weights, validate_data):
     target = validate_data['price']
     value = validate_data.drop(['price'], axis=1)
-    value = validate_data.drop(['dummy'], axis=1)
+    value = value.drop(['dummy'], axis=1)
     mse = mean_square_error(value, target, weights)
     print("Validated MSE:\t\t" + str(mse))
 
@@ -133,7 +133,7 @@ def task1a():
     labels = ['bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors', 'view',
        'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built',
        'zipcode', 'lat', 'long', 'sqft_living15', 'sqft_lot15', 'month', 'day',
-       'year', 'age_since_renovated', 'price', 'waterfront']
+       'year', 'age_since_renovated', 'waterfront']
     lrs = [1, 2, 3, 4]
 
     max = 1000000
@@ -151,14 +151,68 @@ def task1a():
 
 task1a()
 
-
-
 # Part 2 a. Training and experimenting with non-normalized data.
 # Your code here:
 
+def task_2a():
+    data = load_data(train)
+    preprocess_data(data, normalize=True, drop_sqft_living15=False)
+    data = preprocess_data(data, normalize=False, drop_sqft_living15=False)
 
-# Part 2 b Training with redundant feature removed. 
-# Your code here:
+    validate = load_data(val)
+    validate = preprocess_data(validate, False, False)
+
+    labels = ['bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors', 'view',
+              'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built',
+              'zipcode', 'lat', 'long', 'sqft_living15', 'sqft_lot15', 'month', 'day',
+              'year', 'age_since_renovated', 'waterfront']
+
+    training_values = data[labels].to_numpy()
+    weights = np.zeros(training_values.shape[1])
+    target = data['price'].to_numpy()
+
+    lrs = [12, 11, 10, 5, 1]
+
+    for lr in lrs:
+        learning_rate = 10 ** (-lr)
+        print("Learning Rate " + str(learning_rate) + " =============")
+        weight_batch, loses, weight = gd_train(data, labels, learning_rate, 4000)
+
+    learning_rate = 10 ** (-11)
+    print("Best Learning Rate is " + str(learning_rate) + " =============")
+    weight_batch, loses, weight = gd_train(data, labels, learning_rate, 4000)
+    print("...................")
+    print("Learned Feature Weights " + str(weight_batch))
 
 
+task_2a()
 
+def task_2b():
+    multi_losses = []
+    data = load_data(train)
+    data = preprocess_data(data, True, True)
+
+    validate = load_data(val)
+    validate = preprocess_data(validate, True, True)
+
+    labels = ['bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors', 'view',
+              'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built',
+              'zipcode', 'lat', 'long', 'sqft_lot15', 'month', 'day',
+              'year', 'age_since_renovated', 'waterfront']
+
+    lrs = [7, 6, 5, 1]
+
+    max = 100000
+
+    for lr in lrs:
+        learning_rate = 10 ** (-lr)
+        print("Learning Rate " + str(learning_rate) + " =============")
+        weight_batch, loses, weight = gd_train(data, labels, learning_rate, 4000)
+        validate_weight(weight_batch, validate)
+        if weight < max:
+            max = weight
+        multi_losses.append(loses)
+    plot_losses(multi_losses, lrs, max)
+
+
+task_2b()
