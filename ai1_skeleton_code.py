@@ -1,11 +1,11 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 # constants
-train = "/home/sam/Downloads/IA1_train.csv"
-val = "/home/sam/Downloads/IA1_dev.csv"
-convergence_treshold = 0.0005
+train = "IA1_train.csv"
+val = "IA1_dev.csv"
+convergence_threshold = 0.0005
 
 
 # Loads a data file from a provided file location.
@@ -15,13 +15,14 @@ def load_data(path):
 
 
 def renovation(year, year_built, year_renovated):
-    age_since_renovated = [0.0]*len(year)
+    age_since_renovated = [0.0] * len(year)
     for index, value in enumerate(year_renovated):
         if value == 0:
-            age_since_renovated[index] = year[index]-year_built[index]
+            age_since_renovated[index] = year[index] - year_built[index]
         else:
             age_since_renovated[index] = year[index] - year_renovated[index]
     return age_since_renovated
+
 
 # Implements dataset preprocessing, with boolean options to either normalize the data or not, 
 # and to either drop the sqrt_living15 column or not.
@@ -56,7 +57,7 @@ def preprocess_data(data, normalize, drop_sqft_living15):
 def modify_features(data):
     # Your code here:
 
-    return modified_data
+    return data
 
 
 def mean_square_error(training_values, target, weights):
@@ -72,11 +73,11 @@ def batch_gradient_descent(training_values, target, weights, learning_rate, iter
         weights = weights - (learning_rate / len(target)) * np.dot(prediction - target, training_values)
         loss_history.append(mean_square_error(training_values, target, weights))
         if i > 0:
-            if loss_history[i-1] < loss_history[i]:
-                print("Diverged")
+            if loss_history[i - 1] < loss_history[i]:
+                print("\tDiverged")
                 break
-            if (loss_history[i-1] - loss_history[i]) < convergence_treshold:
-                print("Converged")
+            if (loss_history[i - 1] - loss_history[i]) < convergence_threshold:
+                print("\tConverged")
                 break
     return weights, loss_history
 
@@ -90,19 +91,19 @@ def gd_train(data, labels, lr, iterations):
     weights = np.zeros(training_values.shape[1])
     start_weight = mean_square_error(training_values, target, weights)
     batch_weight, batch_loss_history = batch_gradient_descent(training_values, target, weights, lr, iterations)
-    print("Final MSE:\t\t\t" + str(mean_square_error(training_values, target, batch_weight)))
+    print("\tFinal MSE:\t\t\t" + str(mean_square_error(training_values, target, batch_weight)))
 
     return batch_weight, batch_loss_history, start_weight
 
 
 # Generates and saves plots of the training loss curves. Note that you can interpret losses as a matrix
 # containing the losses of multiple training runs and then put multiple loss curves in a single plot.
-def plot_losses(losses, labels, ymax):
+def plot_losses(losses, labels, y_max):
     fig = plt.figure(figsize=(10, 6))
     ax = plt.subplot(1, 1, 1)
-    ax.set_ylim([0, ymax])
+    ax.set_ylim([0, y_max])
     for index, y in enumerate(losses):
-        ax.plot(range(len(y)), y, linewidth=0.25, label="LR " + str(10**(-labels[index])))
+        ax.plot(range(len(y)), y, linewidth=0.25, label="LR " + str(10 ** (-labels[index])))
     fig.legend()
     fig.show()
     return
@@ -113,82 +114,75 @@ def validate_weight(weights, validate_data):
     value = validate_data.drop(['price'], axis=1)
     value = value.drop(['dummy'], axis=1)
     mse = mean_square_error(value, target, weights)
-    print("Validated MSE:\t\t" + str(mse))
-
-# Invoke the above functions to implement the required functionality for each part of the assignment.
-
-# Part 0  : Data preprocessing.
-# Your code here:
+    print("\tValidated MSE:\t\t" + str(mse))
 
 
-# Part 1 . Implement batch gradient descent and experiment with different learning rates.
-# Your code here:
-def task1a():
+def test_learning_rates(lrs, data, labels, validate):
     multi_losses = []
+    maximum = 100000
+    for lr in lrs:
+        learning_rate = 10 ** (-lr)
+        print("Learning Rate " + str(learning_rate) + " =============")
+        weight_batch, loses, weight = gd_train(data, labels, learning_rate, 4000)
+        validate_weight(weight_batch, validate)
+        if weight < maximum:
+            maximum = weight
+        multi_losses.append(loses)
+    return multi_losses, maximum
+
+
+def task1a():
     data = load_data(train)
     data = preprocess_data(data, True, False)
 
     validate = load_data(val)
     validate = preprocess_data(validate, True, False)
     labels = ['bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors', 'view',
-       'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built',
-       'zipcode', 'lat', 'long', 'sqft_living15', 'sqft_lot15', 'month', 'day',
-       'year', 'age_since_renovated', 'waterfront']
-    lrs = [1, 2, 3, 4]
+              'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built',
+              'zipcode', 'lat', 'long', 'sqft_living15', 'sqft_lot15', 'month', 'day',
+              'year', 'age_since_renovated', 'waterfront']
+    lrs = [0, 1, 2, 3, 4]
 
-    max = 1000000
-
-    for lr in lrs:
-        learning_rate = 10 ** (-lr)
-        print("Learning Rate " + str(learning_rate) + " =============")
-        weight_batch, loses, weight = gd_train(data, labels, learning_rate, 4000)
-        validate_weight(weight_batch, validate)
-        if weight < max:
-            max = weight
-        multi_losses.append(loses)
-    plot_losses(multi_losses, lrs, max)
+    multi_losses, maximum = test_learning_rates(lrs, data, labels, validate)
+    plot_losses(multi_losses, lrs, maximum)
 
 
+print("=====================================")
+print("=== TASK 1")
+print("=====================================")
 task1a()
 
-# Part 2 a. Training and experimenting with non-normalized data.
-# Your code here:
 
 def task_2a():
     data = load_data(train)
     preprocess_data(data, normalize=True, drop_sqft_living15=False)
     data = preprocess_data(data, normalize=False, drop_sqft_living15=False)
 
-    validate = load_data(val)
-    validate = preprocess_data(validate, False, False)
-
     labels = ['bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors', 'view',
               'condition', 'grade', 'sqft_above', 'sqft_basement', 'yr_built',
               'zipcode', 'lat', 'long', 'sqft_living15', 'sqft_lot15', 'month', 'day',
               'year', 'age_since_renovated', 'waterfront']
-
-    training_values = data[labels].to_numpy()
-    weights = np.zeros(training_values.shape[1])
-    target = data['price'].to_numpy()
 
     lrs = [12, 11, 10, 5, 1]
 
     for lr in lrs:
         learning_rate = 10 ** (-lr)
         print("Learning Rate " + str(learning_rate) + " =============")
-        weight_batch, loses, weight = gd_train(data, labels, learning_rate, 4000)
+        gd_train(data, labels, learning_rate, 4000)
 
     learning_rate = 10 ** (-11)
     print("Best Learning Rate is " + str(learning_rate) + " =============")
     weight_batch, loses, weight = gd_train(data, labels, learning_rate, 4000)
-    print("...................")
     print("Learned Feature Weights " + str(weight_batch))
 
 
+print("=====================================")
+print("=== TASK 2a")
+print("=====================================")
 task_2a()
 
+
 def task_2b():
-    multi_losses = []
     data = load_data(train)
     data = preprocess_data(data, True, True)
 
@@ -201,18 +195,12 @@ def task_2b():
               'year', 'age_since_renovated', 'waterfront']
 
     lrs = [7, 6, 5, 1]
-
-    max = 100000
-
-    for lr in lrs:
-        learning_rate = 10 ** (-lr)
-        print("Learning Rate " + str(learning_rate) + " =============")
-        weight_batch, loses, weight = gd_train(data, labels, learning_rate, 4000)
-        validate_weight(weight_batch, validate)
-        if weight < max:
-            max = weight
-        multi_losses.append(loses)
-    plot_losses(multi_losses, lrs, max)
+    test_learning_rates(lrs, data, labels, validate)
 
 
+print("=====================================")
+print("=== TASK 2b")
+print("=====================================")
 task_2b()
+print("=====================================")
+print("=== DONE")
